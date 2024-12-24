@@ -8,32 +8,68 @@ public class SimpleMenu implements Menu {
 
     @Override
     public boolean add(String parentName, String childName, ActionDelegate actionDelegate) {
-   /*  добавьте реализацию*/
-        return  false;
+        MenuItem current = new SimpleMenuItem(childName, actionDelegate);
+        Optional<ItemInfo> itemInfo = findItem(parentName);
+        if (itemInfo.isPresent()) {
+            List<MenuItem> children = itemInfo.get().menuItem.getChildren();
+            children.add(current);
+        } else if (parentName == null) {
+            rootElements.add(current);
+        }
+        return itemInfo.isPresent() || parentName == null;
     }
 
     @Override
     public Optional<MenuItemInfo> select(String itemName) {
-        /*  добавьте реализацию*/
-        return null;
+        Optional<ItemInfo> itemInfo = findItem(itemName);
+        Optional<MenuItemInfo> result = Optional.empty();
+        if (itemInfo.isPresent()) {
+            ItemInfo info = itemInfo.get();
+            result = Optional.of(new MenuItemInfo(info.menuItem, info.number));
+        }
+        return result;
     }
 
     @Override
     public Iterator<MenuItemInfo> iterator() {
-        /*  добавьте реализацию*/
-        return null;
+        return new Iterator<MenuItemInfo>() {
+            private final Iterator<ItemInfo> infoIterator = new DFSIterator();
+
+            public Iterator<ItemInfo> getInfoIterator() {
+                return infoIterator;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return infoIterator.hasNext();
+            }
+
+            @Override
+            public MenuItemInfo next() {
+                ItemInfo info = infoIterator.next();
+                return new MenuItemInfo(info.menuItem, info.number);
+            }
+        };
     }
 
     private Optional<ItemInfo> findItem(String name) {
-        /*  добавьте реализацию*/
-        return null;
+        Iterator<ItemInfo> iterator = new DFSIterator();
+        Optional<ItemInfo> result = Optional.empty();
+        while (iterator.hasNext()) {
+            ItemInfo current = iterator.next();
+            if (current.menuItem.getName().equals(name)) {
+                result = Optional.of(current);
+
+            }
+        }
+        return result;
     }
 
     private static class SimpleMenuItem implements MenuItem {
 
-        private String name;
-        private List<MenuItem> children = new ArrayList<>();
-        private ActionDelegate actionDelegate;
+        private final String name;
+        private final List<MenuItem> children = new ArrayList<>();
+        private final ActionDelegate actionDelegate;
 
         public SimpleMenuItem(String name, ActionDelegate actionDelegate) {
             this.name = name;
@@ -58,9 +94,9 @@ public class SimpleMenu implements Menu {
 
     private class DFSIterator implements Iterator<ItemInfo> {
 
-        Deque<MenuItem> stack = new LinkedList<>();
+        private final Deque<MenuItem> stack = new LinkedList<>();
 
-        Deque<String> numbers = new LinkedList<>();
+        private final Deque<String> numbers = new LinkedList<>();
 
         DFSIterator() {
             int number = 1;
@@ -68,6 +104,14 @@ public class SimpleMenu implements Menu {
                 stack.addLast(item);
                 numbers.addLast(String.valueOf(number++).concat("."));
             }
+        }
+
+        public Deque<MenuItem> getStack() {
+            return stack;
+        }
+
+        public Deque<String> getNumbers() {
+            return numbers;
         }
 
         @Override
@@ -84,22 +128,31 @@ public class SimpleMenu implements Menu {
             String lastNumber = numbers.removeFirst();
             List<MenuItem> children = current.getChildren();
             int currentNumber = children.size();
-            for (var i = children.listIterator(children.size()); i.hasPrevious();) {
-                stack.addFirst(i.previous());
+            var iterator = children.listIterator(children.size());
+            while (iterator.hasPrevious()) {
+                stack.addFirst(iterator.previous());
                 numbers.addFirst(lastNumber.concat(String.valueOf(currentNumber--)).concat("."));
             }
             return new ItemInfo(current, lastNumber);
         }
     }
 
-    private class ItemInfo {
+    private static class ItemInfo {
 
-        MenuItem menuItem;
-        String number;
+        private final MenuItem menuItem;
+        private final String number;
 
         public ItemInfo(MenuItem menuItem, String number) {
             this.menuItem = menuItem;
             this.number = number;
+        }
+
+        public MenuItem getMenuItem() {
+            return menuItem;
+        }
+
+        public String getNumber() {
+            return number;
         }
     }
 }
